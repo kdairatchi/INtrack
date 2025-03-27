@@ -126,58 +126,6 @@ Coming Soon
 	•	Auto-update agent: Pulls from bcheck, medium, CVEs, and fixes everything
 
 ⸻
-Area
-Module
-Status
-Next Step Ideas
-Recon
-ReconAgent
-Stable
-Add smart tagging, threat scoring
-Secrets Detection
-SecretsAgent
-Stable
-Add GitHub + JS scraping mode
-Payload Testing
-PayloadAgent
-WIP
-Add support for bchecks + smart bypasses
-Screenshotting
-ScreenshotAgent
-Stable
-Group screenshots by domain, add HTML archiver
-EXIF / Metadata
-GroqHound + EXIFTron
-Strong
-Add auto S3 hunter + location leakage check
-Reporting
-ReportAgent
-Stable
-Add Groq-based summary, scoring
-PoC Building
-PoCAutoBuilder
-Stable
-Generate .py + HTML, snapshot PoCs
-CVE Feed
-CVE Puller
-Core Ready
-Correlate with Nuclei/INtrack scan output
-Auto Fixing
-FixerAgent
-Crucial
-Add AI explanations + link to fix PRs
-Dorking
-DorkingAI
-WIP
-Inject bchecks & search engine rotator
-BChecks
-bcheck_ai_bot.py
-New
-Parse bchecks from /data/bchecks/, run + analyze
-Organizer
-organize.py
-Active
-Add diff viewer, recovery system
 
 Future Company Vision
 
@@ -195,3 +143,52 @@ Never scan targets you do not own or lack explicit permission to test.
 ⸻
 
 © 2025 Kdairatchi | xkdai | GroqWarden Project
+
+----------
+
+
+
+
+
+⸻
+
+Current Core Modules
+
+Area	Module	Status	Next Step Ideas
+Recon	ReconAgent	Stable	Add smart tagging, threat scoring
+Secrets Detection	SecretsAgent	Stable	Add GitHub + JS scraping mode
+Payload Testing	PayloadAgent	WIP	Add support for bchecks + smart bypasses
+Screenshotting	ScreenshotAgent	Stable	Group screenshots by domain, add HTML archiver
+EXIF / Metadata	GroqHound + EXIFTron	Strong	Add auto S3 hunter + location leakage check
+Reporting	ReportAgent	Stable	Add Groq-based summary, scoring
+PoC Building	PoCAutoBuilder	Stable	Generate .py + HTML, snapshot PoCs
+CVE Feed	CVE Puller	Core Ready	Correlate with Nuclei/INtrack scan output
+Auto Fixing	FixerAgent	Crucial	Add AI explanations + link to fix PRs
+Dorking	DorkingAI	WIP	Inject bchecks & search engine rotator
+BChecks	bcheck_ai_bot.py	New	Parse bchecks from /data/bchecks/, run + analyze
+Organizer	organize.py	Active	Add diff viewer, recovery system
+
+
+
+⸻
+
+Immediate To-Do Ideas (Pick One to Dive In)
+	1.	[BCheck AI Bot]
+	•	Load .yaml or .json bchecks from data/bchecks/
+	•	Run against recon’d URLs or INtrack results
+	•	Score, analyze, Groq-summarize findings
+	2.	[DorkingAI Upgrade]
+	•	Add headless Playwright/Requests scraping
+	•	Add Groq summary of found URLs
+	•	Optional payload testing w/ XSS payloads
+	3.	[FixerAgent 2.0]
+	•	Let it scan /logs/errors.log
+	•	Propose fixes, auto-create GitHub issues, link to AI PRs
+	4.	[GroqWatcher]
+	•	Watch /output, /recon_logs, /triage for new files
+	•	Auto-run analysis (Secrets, EXIF, PoC gen)
+	5.	[INtrack → GroqWarden Bridge]
+	•	Make INtrack output auto-pipe into GroqWarden agents
+	•	Unified pipeline for discovered instances
+
+⸻
