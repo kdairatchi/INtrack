@@ -1,65 +1,98 @@
+# GroqWarden + INtrack — Ultimate AI-Powered Cybersecurity Automation Framework
 
+![Banner](https://img.shields.io/badge/GroqWarden-AI--BugBounty--Automation-purple?style=flat-square&logo=groq)
 
-⸻
+> **Author**: xkdai | Powered by Groq | Private Research Toolkit  
+> **Status**: Private Intelligence & Recon Framework | Phase 2+  
+> **Mission**: Automate. Analyze. Triage. Fix. Repeat.
 
-# GroqWarden x INtrack
+---
 
-The Ultimate AI-Powered Bug Bounty, Recon & Security Automation Framework
-Created by xkdai — from script kiddie to elite, one scan at a time.
+## Overview
 
- 
+GroqWarden is the core of your automated cybersecurity arsenal — seamlessly fusing AI agents, bug bounty reconnaissance, CVE intelligence, payload testing, and AI-enhanced reporting. Paired with INtrack, a multi-threaded internet-wide scanner, it forms a powerful dual-stack designed for red teamers, hunters, and future security ops platforms.
 
- 
+Built by a beginner bug bounty researcher climbing to pro-level using their *own tool*.
 
+---
 
-⸻
+## Features
 
-# What Is This?
+### GroqWarden
+- **AI-Powered Agents**: Groq-driven recon, secrets, EXIF, payloads, CVEs, reporting
+- **Smart Recon Stack**: Subdomain discovery, URL parsing, parameter extraction
+- **EXIFTron v7.0**: Metadata analyzer + PoC builder + AI triage
+- **PoC Auto-Builder**: Generates working PoCs from AI triage
+- **Secrets Scanner**: TruffleHog, Nosey Parker integration
+- **Discord Alerts**: All modules auto-notify you
+- **HTML Reports**: Beautiful, structured Markdown and dashboards
+- **File Organizer**: AI-sorted repo cleanup, blacklist + logs
+- **GroqBanner + Injector**: ASCII banners auto-added
+- **Fail Recovery**: FixerAgent heals and recovers failed tools
 
-This is the fusion of GroqWarden and INtrack — an intelligent, auto-healing, AI-enhanced recon and scanning system that:
-	•	Performs deep reconnaissance, payload fuzzing, PoC building, and EXIF analysis
-	•	Uses Groq AI for triage, banner generation, file classification, decision-making, and agent assistance
-	•	Integrates parallel scanning, modular agents, and auto-organized output
-	•	Includes the INtrack engine for network-level, CVE, IoT, and web scanner automation
+### INtrack
+- **Full Network Crawling**: Subnets, hosts, ranges, and random IPs
+- **Vuln Scanners**: CVEs, instance detection, IoT & exposure detection
+- **Multi-threaded Engine**: Ultra-fast scanning
+- **Recon Trigger**: Send data directly to GroqWarden agents
 
-⸻
+---
 
-# Roadmap
+## Architecture (Mermaid)
 
+```mermaid
 graph TD
-    Start[Start: main.py]
-    subgraph Core Modules
-        A[ReconAgent]
-        B[SecretsAgent]
-        C[IntelBot]
-        D[PayloadAgent]
-        E[ScreenshotAgent]
-        F[ReportAgent]
-        G[ToolRunnerAgent]
-        H[PoCAutoBuilder]
-        I[EXIFBot]
-        J[BCheckBot]
-        K[DorkingBot]
-    end
+    A[Main.py] -->|safe_run| B[ReconAgent]
+    A --> C[SecretsAgent]
+    A --> D[IntelBot]
+    A --> E[ScreenshotAgent]
+    A --> F[PayloadAgent]
+    A --> G[PoCAutoBuilder]
+    A --> H[ReportAgent]
+    A --> I[FixerAgent]
+    A --> J[ToolRunnerAgent]
+    A --> K[GroqCluster Parallelizer]
+    A --> L[EXIFTron AI + S3]
+    A --> M[DiscordNotifier]
+    A --> N[AutoOrganizer + Smart Config]
+    A --> O[Dorking AI Bot]
+    A --> P[bCheck AI Bot]
+    A --> Q[INtrack Scanner Trigger]
 
-    subgraph Groq Intelligence
-        L[GroqCluster]
-        M[GroqHound]
-        N[FixerAgent]
-        O[GroqBannerGen]
-    end
+    B -->|Writes| recon_logs
+    C -->|Extracts| secrets/
+    D -->|Summarizes| intel/
+    F -->|Tests| pocs/
+    H -->|Outputs| reports/
+    N -->|Moves| organized repo/
 
-    subgraph AutoSystems
-        P[AutoOrganizer]
-        Q[AutoUpdateBot]
-        R[LogWatcher]
-    end
 
-    Start --> A & B & C --> D --> E --> F --> G
-    G --> H & I --> J --> K
-    A & G --> L
-    L --> M --> N
-    M --> P & Q & R
+
+⸻
+
+Usage
+
+Start Main Flow
+
+python3 main.py
+
+Full Recon on Domain
+
+[?] Run full scan on a domain? y
+[?] Enter domain: example.com
+
+Run Specific Agents
+
+[?] Run PayloadAgent? y
+[?] Enter URL: https://site.com/search?query=test
+
+Run GroqHound (EXIF AI)
+
+triage/image1.json --> AI Triage --> report & PoC
+
+Run INtrack
+
+python3 main.py -host 192.168.1.1 -instance wordpress
 
 
 
@@ -67,124 +100,46 @@ graph TD
 
 Folder Structure
 
-groqwarden/
-├── agents/             # Modular AI-powered agents
-├── user_tools/         # Scripts, recon helpers, utilities
-├── utils/              # Groq API, CVE fetchers, Discord notifier, etc.
-├── config/             # JSON configs and blacklists
-├── output/             # Raw output files from scans
-├── triage/             # JSON/metadata PoC triage results
-├── recon_logs/         # Full recon logs by timestamp
-├── reports/            # Markdown + TXT final reports
-├── pocs/               # Stored payload and PoC files
-├── screenshots/        # Site screenshots + HTML dump
-├── web_ui/             # Optional Gradio dashboard (optional)
-├── fullscan.py         # Complete recon + fuzz workflow
-├── main.py             # CLI runner and orchestrator
-├── setup.py            # CLI setup for installing
-├── README.md           # This file
+/agents          - Core AI modules (Recon, Payload, CVE, EXIF)
+/scripts         - Safe runners, organizers, groq tools
+/user_tools      - User scripts, PoC gen, HTML recon, recon helpers
+/output          - Response logs, raw outputs
+/reports         - All Markdown reports & recon logs
+/recon_logs      - Logs from subdomain/url scans
+/triage          - Triaged metadata + AI results
+/screenshots     - Screenshots from Groq agent
+/pocs            - PoCs generated from payload/EXIF
+/config          - settings.json, organizer_config.json
+/utils           - Groq API, CVE fetcher, report builder
+/web_ui          - (Coming soon) full web dashboard
 
 
-
-⸻
-
-How to Use
-
-Install
-
-git clone https://github.com/kdairatchi/groqwarden.git
-cd groqwarden
-pip install -r requirements.txt
-
-Set your Groq API Key in a .env file:
-
-GROQ_API_KEY=your_key_here
-
-Basic Run
-
-python3 main.py
-
-You’ll be prompted for:
-	•	Full scan
-	•	Report generation
-	•	Payload fuzzing
-	•	Manual recon
-	•	Agent testing
-	•	Running your own scripts
-
-⸻
-
-Full Scan Mode
-
-python3 fullscan.py --domain example.com
-
-This includes:
-	•	Subdomain enum (subfinder, amass)
-	•	URL collection (waybackurls, katana)
-	•	Vulnerability detection (nuclei, ffuf, dalfox)
-	•	Screenshot capture
-	•	PoC auto-generation
-	•	Secrets/JS/API key analysis
-
-⸻
-
-Agents
-
-Each core agent can run standalone or through main.py:
-
-Agent	Function
-ReconAgent	Subdomain, URL, and parameter recon
-SecretsAgent	Detect secrets in JS and static files
-IntelBot	Collect passive info from multiple sources
-PayloadAgent	Fuzzing with XSS/SSRF/SQLi payloads
-ScreenshotAgent	Capture visual snapshots of all targets
-ReportAgent	Generate and save structured reports
-ToolRunnerAgent	External scanner runner (nmap, zap, burp, etc.)
-PoCAutoBuilder	Auto-build HTML/JS PoCs from payload data
-GroqHoundAgent	AI triage and clustering of vulnerabilities
-BCheckBot	Analyze bchecks and perform behavioral checks from data/bchecks/
-DorkingBot	Generate + test dorks, analyze findings with Groq AI
-FixerAgent	Fixes errors, missing modules, broken logic
-AutoOrganizer	Organize all output automatically using Groq + user logic
-AutoUpdateBot	Updates agents, scripts, config files, and regenerates intelligence
-
-
-
-⸻
-
-How Is It Smart?
-	•	GroqCluster distributes tasks for concurrent LLM triage
-	•	All safe_run() wrapped — tool never crashes, FixerAgent heals it
-	•	Auto-banner generation with signature xkdai
-	•	Organized outputs that evolve and refactor with every run
-	•	Metadata-aware (e.g., EXIF triage, secrets analyzer, CVE PoC builders)
 
 ⸻
 
 Coming Soon
-	•	Web UI for monitoring and controlling agents
-	•	GroqShell – ask natural language and have it spawn tools
-	•	Webhook C2 via Discord + command execution via bot
-	•	INtrack deep integration with automatic port+service-based agent launching
-	•	Frogy Scoring System – risk level assigned to each recon result
-	•	Dashboard Heatmap
-	•	Log Replayer – AI bot learns from logs and re-runs smarter next time
+	•	Web UI with agent control, live logs
+	•	GroqCluster fully parallel pipeline engine
+	•	GroqWatcher: Auto-watcher for all new recon + triage
+	•	GroqFixerBot: AI bot that refactors broken scripts and reports issues
+	•	BCheck & Dorking AI Bots full integration
+	•	Auto-update agent: Pulls from bcheck, medium, CVEs, and fixes everything
 
 ⸻
 
-Contributions
+Future Company Vision
 
-All tools are designed to learn with the user.
-You don’t have to be an expert — this is built for beginner bug bounty hunters looking to:
-	•	Automate their recon
-	•	Understand payload behavior
-	•	Learn from Groq’s suggestions
-	•	Build their own toolkit with swagger
+This framework will be at the core of an upcoming AI-powered cybersecurity platform tailored for automation-first security teams and bug bounty hackers. Our mission: make security automation smart, modular, and human-enhancing, not just scripted.
+
+You’re watching the foundation of something huge. Built from scratch. Built from hunger.
 
 ⸻
 
-License
+Legal Disclaimer
 
-MIT — use it, break it, fork it, grow with it.
+This is a private, personal framework built for ethical testing, research, and education.
+Never scan targets you do not own or lack explicit permission to test.
 
 ⸻
+
+© 2025 Kdairatchi | xkdai | GroqWarden Project
