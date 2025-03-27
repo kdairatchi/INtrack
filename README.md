@@ -38,36 +38,6 @@ Built by a beginner bug bounty researcher climbing to pro-level using their *own
 
 ---
 
-## Architecture (Mermaid)
-
-```mermaid
-graph TD
-    A[Main.py] -->|safe_run| B[ReconAgent]
-    A --> C[SecretsAgent]
-    A --> D[IntelBot]
-    A --> E[ScreenshotAgent]
-    A --> F[PayloadAgent]
-    A --> G[PoCAutoBuilder]
-    A --> H[ReportAgent]
-    A --> I[FixerAgent]
-    A --> J[ToolRunnerAgent]
-    A --> K[GroqCluster Parallelizer]
-    A --> L[EXIFTron AI + S3]
-    A --> M[DiscordNotifier]
-    A --> N[AutoOrganizer + Smart Config]
-    A --> O[Dorking AI Bot]
-    A --> P[bCheck AI Bot]
-    A --> Q[INtrack Scanner Trigger]
-
-    B -->|Writes| recon_logs
-    C -->|Extracts| secrets/
-    D -->|Summarizes| intel/
-    F -->|Tests| pocs/
-    H -->|Outputs| reports/
-    N -->|Moves| organized repo/
-
-
-
 ⸻
 
 Usage
@@ -192,3 +162,34 @@ Immediate To-Do Ideas (Pick One to Dive In)
 	•	Unified pipeline for discovered instances
 
 ⸻
+
+
+## Architecture (Mermaid)
+
+```mermaid
+graph TD
+    A[Main.py] -->|safe_run| B[ReconAgent]
+    A --> C[SecretsAgent]
+    A --> D[IntelBot]
+    A --> E[ScreenshotAgent]
+    A --> F[PayloadAgent]
+    A --> G[PoCAutoBuilder]
+    A --> H[ReportAgent]
+    A --> I[FixerAgent]
+    A --> J[ToolRunnerAgent]
+    A --> K[GroqCluster Parallelizer]
+    A --> L[EXIFTron AI + S3]
+    A --> M[DiscordNotifier]
+    A --> N[AutoOrganizer + Smart Config]
+    A --> O[Dorking AI Bot]
+    A --> P[bCheck AI Bot]
+    A --> Q[INtrack Scanner Trigger]
+
+    B -->|Writes| recon_logs
+    C -->|Extracts| secrets/
+    D -->|Summarizes| intel/
+    F -->|Tests| pocs/
+    H -->|Outputs| reports/
+    N -->|Moves| organized repo/
+
+```
