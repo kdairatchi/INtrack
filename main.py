@@ -7,8 +7,10 @@ import random
 import socket
 import urllib3
 import concurrent.futures
-from alive_progress import alive_bar
+from alive_progress import alive_bar, config_handler
 import subprocess
+import threading
+import os
 from lib.worms.vscode_sftp_worm import crawl_vscode_sftp
 from lib.worms.microsoft_worm import microsoft_worm
 from lib.worms.tomcat_worm import exploit_CVE_2017_12615_CVE_2017_12617
@@ -61,6 +63,7 @@ from lib.network.rtsp_mangler import rtsp_checks
 from lib.network.adb_misconfig import check_adb
 from lib.network.port_scanner import port_scanner
 from lib.network.network_handler import get_ips_from_subnet
+from lib.instances.bigip_scanner import bigip
 
 from lib.vulns.netgear.CVE_2016_6277 import check_CVE_2016_6277
 
@@ -96,6 +99,9 @@ from lib.vulns.microsoft.CVE_2015_1635 import check_CVE_2015_1635
 from lib.vulns.microsoft.CVE_2021_38647 import check_CVE_2021_38647
 from lib.vulns.microsoft.CVE_2021_34473 import check_CVE_2021_34473
 
+from lib.vulns.f5bigip.CVE_2022_1388 import check_CVE_2022_1388
+from lib.vulns.f5bigip.CVE_2021_22986 import check_CVE_2021_22986
+
 from lib.workflows.microsoft_workflow import check_microsoft_workflow
 
 from lib.color_handler import print_colour
@@ -107,6 +113,10 @@ from lib.http_handler import http_https
 console = Console()
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+def print_red(message):
+    """Print a message in red color for errors"""
+    print_colour(f"[-] {message}")
 
 def ascii_art():
     print("")
@@ -184,30 +194,57 @@ def generate_ip():
     # Fallback to a common range if we couldn't find a valid IP
     return f"{random.randint(50, 70)}.{random.randint(30, 150)}.{random.randint(1, 254)}.{random.randint(1, 254)}"
 
-def check_port(ip, port):
+def check_port(ip, port, timeout=1.0):
+    """Check if a port is open with proper timeout handling"""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(1)
+        s.settimeout(timeout)
         try:
             s.connect((ip, port))
             return True
         except (socket.timeout, socket.error):
             return False
+        except Exception as e:
+            print_red(f"Unexpected error checking port {port} on {ip}: {e}")
+            return False
 
 def parse_ports(port_str):
+    """Parse port string into a list of integer ports with improved error handling"""
+    if not port_str:
+        return [80]  # Default to port 80
+    
     ports = set()
-    for part in port_str.split(','):
-        if '-' in part:
-            start, end = map(int, part.split('-'))
-            if start > end:
-                print_red(f"Invalid port range: {start}-{end}")
-                continue
-            ports.update(range(start, end + 1))
-        else:
-            port = int(part)
-            if 1 <= port <= 65535:
-                ports.add(port)
+    try:
+        for part in port_str.split(','):
+            part = part.strip()
+            if '-' in part:
+                try:
+                    start, end = map(int, part.split('-'))
+                    if start > end:
+                        print_red(f"Invalid port range: {start}-{end}")
+                        continue
+                    if start < 1 or end > 65535:
+                        print_red(f"Port range {start}-{end} outside valid range (1-65535)")
+                        continue
+                    ports.update(range(start, end + 1))
+                except ValueError:
+                    print_red(f"Invalid port range format: {part}")
             else:
-                print_red(f"Invalid port number: {port}")
+                try:
+                    port = int(part)
+                    if 1 <= port <= 65535:
+                        ports.add(port)
+                    else:
+                        print_red(f"Invalid port number: {port} (must be 1-65535)")
+                except ValueError:
+                    print_red(f"Invalid port number: {part}")
+    except Exception as e:
+        print_red(f"Error parsing ports: {e}")
+        return [80]  # Fallback to port 80 on error
+        
+    if not ports:
+        print_red("No valid ports specified, using default port 80")
+        return [80]
+        
     return sorted(ports)
 
 def parse_comma_separated_args(arg_string):
@@ -215,7 +252,27 @@ def parse_comma_separated_args(arg_string):
         return []
     return [arg.strip().lower() for arg in arg_string.split(",")]
 
+def is_valid_ip(ip):
+    """Validate IP address format"""
+    try:
+        octets = ip.split('.')
+        if len(octets) != 4:
+            return False
+        for octet in octets:
+            num = int(octet)
+            if num < 0 or num > 255:
+                return False
+        return True
+    except (ValueError, AttributeError):
+        return False
+
 def process_ip(ip, args):
+    """Process a single IP address with all enabled checks"""
+    # Validate IP format first
+    if not is_valid_ip(ip):
+        print_red(f"Invalid IP address format: {ip}")
+        return None
+        
     ports = parse_ports(args.p)
     lhost = args.lh
     lport = args.lp
@@ -233,7 +290,9 @@ def process_ip(ip, args):
             return url
         return None
 
-    open_ports = [port for port in ports if check_port(ip, port)]
+    # Use the timeout from args for port checking
+    port_timeout = min(args.timeout / 2, 3.0)  # Use half the HTTP timeout, max 3 seconds
+    open_ports = [port for port in ports if check_port(ip, port, port_timeout)]
     if not open_ports:
         return None
 
@@ -278,7 +337,9 @@ def process_ip(ip, args):
             ('CVE-2022-40684', check_CVE_2022_40684),
             ('CVE-2021-34473', check_CVE_2021_34473),
             ('CVE-2023-23752', check_CVE_2023_23752),
-            ('CVE-2015-1635', check_CVE_2015_1635)
+            ('CVE-2015-1635', check_CVE_2015_1635),
+            ('CVE-2022-1388', check_CVE_2022_1388),
+            ('CVE-2021-22986', check_CVE_2021_22986)
         ]:
             if vuln.upper() == check_name.upper() and check_function(ip, open_ports, args.timeout):
                 return ip
@@ -300,7 +361,8 @@ def process_ip(ip, args):
             ('php', php),
             ('webdav', check_webdav),
             ('moveit', check_moveit),
-            ('nginx', check_nginx)
+            ('nginx', check_nginx),
+            ('bigip', bigip)
         ]:
             if instance == instance_name and check_function(ip, open_ports, args.timeout):
                 return ip
@@ -370,19 +432,63 @@ def process_ip(ip, args):
 
     return None
 
-def read_targets_from_file(filename):
-    ips = []
+def safe_open_file(filename, mode):
+    """Safely open a file with path traversal protection"""
+    # Normalize path to prevent path traversal
+    safe_path = os.path.normpath(filename)
+    # Check for suspicious patterns
+    if '..' in safe_path or safe_path.startswith('/'):
+        print_red(f"Suspicious file path detected: {filename}")
+        return None
+    
     try:
-        with open(filename, 'r') as f:
-            for line in f:
-                target = line.strip()
-                if '/' in target:
-                    ips.extend(get_ips_from_subnet(target))
-                else:
-                    ips.append(target)
+        return open(safe_path, mode)
     except FileNotFoundError:
-        print_red(f"Error: The file '{filename}' was not found.")
+        print_red(f"File not found: {safe_path}")
+        return None
+    except PermissionError:
+        print_red(f"Permission denied: {safe_path}")
+        return None
+    except Exception as e:
+        print_red(f"Error opening file {safe_path}: {e}")
+        return None
+
+def read_targets_from_file(filename):
+    """Read targets from file with validation and better error handling"""
+    ips = []
+    
+    # Use safe file opening
+    f = safe_open_file(filename, 'r')
+    if not f:
+        print_red(f"Could not open file: {filename}")
         sys.exit(1)
+    
+    try:
+        line_number = 0
+        for line in f:
+            line_number += 1
+            target = line.strip()
+            if not target or target.startswith('#'):
+                continue  # Skip empty lines and comments
+            
+            if '/' in target:  # Subnet
+                try:
+                    subnet_ips = get_ips_from_subnet(target)
+                    ips.extend(subnet_ips)
+                except Exception as e:
+                    print_red(f"Error parsing subnet {target} on line {line_number}: {e}")
+            else:  # Single IP
+                if is_valid_ip(target):
+                    ips.append(target)
+                else:
+                    print_red(f"Invalid IP format on line {line_number}: {target}")
+    finally:
+        f.close()
+        
+    if not ips:
+        print_red(f"No valid IPs found in file '{filename}'.")
+        sys.exit(1)
+        
     return ips
 
 def list_scanners():
@@ -418,6 +524,8 @@ def list_scanners():
     print_colour("[!] - php")
     print_colour("[!] - webdav")
     print_colour("[!] - moveit")
+    print_colour("[!] - nginx")
+    print_colour("[!] - bigip")
     
     print_colour("[*] Network Checks:")
     print_colour("[!] - telnet")
@@ -455,7 +563,8 @@ def list_scanners():
     print_colour("[!] - CVE-2021-34473")
     print_colour("[!] - CVE-2023-23752")
     print_colour("[!] - CVE-2015-1635")
-    print_colour("[!] - CVE-2024-10914")
+    print_colour("[!] - CVE-2022-1388")
+    print_colour("[!] - CVE-2021-22986")
     print_colour("[!] - traversal")
 
     print_colour("[*] Workflow Scans:")
@@ -463,6 +572,14 @@ def list_scanners():
 
 def main():
     ascii_art()
+    
+    # Configure global progress bar settings
+    config_handler.set_global(
+        spinner='dots_waves',
+        force_tty=True,
+        dual_line=True
+    )
+    
     parser = argparse.ArgumentParser(description="INtrack - Internet Crawler")
     parser.add_argument("-host", type=str, help="Specify a single target IP or subnet range of IPs to scan /24, /23, /22, etc.")
     parser.add_argument("-f", type=str, help="Specify a file containing target IPs.")
@@ -487,6 +604,7 @@ def main():
     parser.add_argument("-spider", type=str, help="Specify the subnet range to scan if a result is found (e.g., /20, /24).")
     parser.add_argument("-list", action="store_true", help="List available scanners and checks")
     parser.add_argument("-update", action="store_true", help="Update INtrack")
+    parser.add_argument("-bar-style", type=str, default="smooth", choices=["smooth", "blocks", "bubbles", "solid", "classic", "brackets"], help="Progress bar style")
 
     args = parser.parse_args()
 
@@ -530,32 +648,155 @@ def main():
         count = args.n or 0
         print_colour(f"[*] Scanning {count} random targets from the internet")
 
-    output_file = open(args.o, 'a') if args.o else None
+    # Print active scan details
+    active_scans = []
+    if args.backdoor: active_scans.append(f"Backdoor checks: {args.backdoor}")
+    if args.vuln: active_scans.append(f"Vulnerability checks: {args.vuln}")
+    if args.instance: active_scans.append(f"Instance checks: {args.instance}")
+    if args.exposure: active_scans.append(f"Exposure checks: {args.exposure}")
+    if args.iot: active_scans.append(f"IoT checks: {args.iot}")
+    if args.miscellaneous: active_scans.append(f"Miscellaneous checks: {args.miscellaneous}")
+    if args.network: active_scans.append(f"Network checks: {args.network}")
+    if args.worm: active_scans.append(f"Worm checks: {args.worm}")
+    
+    if active_scans:
+        print_colour("[*] Active scan modules:")
+        for scan in active_scans:
+            print_colour(f"    - {scan}")
+    else:
+        print_colour("[*] No specific scan modules activated - checking open ports only")
+    
+    print_colour(f"[*] Using {args.t} threads with {args.timeout}s timeout")
+    if args.o:
+        print_colour(f"[*] Results will be saved to: {args.o}")
+    print_colour("----------------------------------------")
 
-    with alive_bar(args.n or len(ip_addresses), title="[Scanning Internet]", enrich_print=False, bar="blocks") as instance_bar:
+    # Use context manager for safe file handling
+    output_file = None
+    try:
+        if args.o:
+            output_file = safe_open_file(args.o, 'a')
+            if not output_file:
+                print_red(f"Unable to open output file '{args.o}'. Results will only be shown on screen.")
+
+        # Implement IP generator for memory efficiency
+        def generate_ip_batch(batch_size):
+            """Memory-efficient generator for IP addresses"""
+            for _ in range(batch_size):
+                yield generate_ip()
+
+        # Different progress bar handling for random scanning vs subnet/file scanning
         if not args.host and not args.f:
-            while len(found_targets) < args.n:
-                ip_addresses = [generate_ip() for _ in range(args.t * 10)]
-                with concurrent.futures.ThreadPoolExecutor(max_workers=args.t) as executor:
-                    for result in executor.map(lambda ip: process_ip(ip, args), ip_addresses):
+            # Create thread-safe counter
+            counter_lock = threading.Lock()
+            total_checked = 0
+            found_count = 0
+            
+            # Random internet scanning - show progress based on IPs scanned
+            total_to_scan = args.n * 20  # Estimate of IPs to scan to find targets
+            with alive_bar(
+                total_to_scan,  # Use estimated IPs to scan instead of target count
+                title="Scanning Internet",
+                enrich_print=False,
+                bar=args.bar_style,
+                stats=True,
+                unit=" IPs"
+            ) as progress_bar:
+                
+                def process_and_update(ip):
+                    """Thread-safe wrapper for process_ip with counter updates"""
+                    nonlocal total_checked, found_count
+                    result = process_ip(ip, args)
+                    
+                    # Ensure thread-safe counter updates
+                    with counter_lock:
+                        total_checked += 1
+                        # Update progress bar (only one thread at a time)
+                        progress_bar.title(f"Scanning Internet [{total_checked}/{total_to_scan}] - Found {found_count}/{args.n}")
+                        progress_bar()
+                        
                         if result:
                             found_targets.append(result)
+                            found_count += 1
+                            # Thread-safe file write
+                            if output_file:
+                                with counter_lock:
+                                    output_file.write(f"{result}\n")
+                                    output_file.flush()
+                    
+                    return result
+                
+                while found_count < args.n:
+                    batch_size = args.t * 10
+                    # Use generator instead of list for memory efficiency
+                    ip_addresses = generate_ip_batch(batch_size)
+                    
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=args.t) as executor:
+                        batch_results = list(executor.map(process_and_update, ip_addresses))
+                        
+                        # Check if we've reached our target
+                        if found_count >= args.n:
+                            break
+                
+                # If we've scanned more than our estimate, increase it
+                if total_checked >= total_to_scan:
+                    with counter_lock:
+                        old_total = total_to_scan
+                        total_to_scan = int(total_to_scan * 1.5)  # Increase by 50%
+                        progress_bar.total = total_to_scan
+                        print_colour(f"[*] Increasing scan estimate: {old_total} → {total_to_scan} IPs")
+
+                print("")  # Ensure we're on a new line
+                print_colour(f"[+] Scan complete - Found {found_count}/{args.n} targets (Checked {total_checked} IPs)")
+        else:
+            # Create thread-safe counter for subnet/file scanning
+            counter_lock = threading.Lock()
+            ips_processed = 0
+            found_count = 0
+            
+            # Subnet or file scanning - show progress based on IPs checked
+            total_ips = len(ip_addresses)
+            with alive_bar(
+                total_ips,  # Use the actual IP count
+                title="Scanning targets",
+                enrich_print=False,
+                bar=args.bar_style,
+                stats=True,
+                unit=" IPs"
+            ) as progress_bar:
+                
+                def process_and_update_subnet(ip):
+                    """Thread-safe wrapper for subnet/file scanning"""
+                    nonlocal ips_processed, found_count
+                    result = process_ip(ip, args)
+                    
+                    # Ensure thread-safe counter updates
+                    with counter_lock:
+                        ips_processed += 1
+                        progress_bar.title(f"Scanning IPs [{ips_processed}/{total_ips}] - Found {found_count}")
+                        progress_bar()
+                        
+                        if result:
+                            found_targets.append(result)
+                            found_count += 1
+                            # Thread-safe file write
                             if output_file:
                                 output_file.write(f"{result}\n")
                                 output_file.flush()
-                        instance_bar()
-        else:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=args.t) as executor:
-                for result in executor.map(lambda ip: process_ip(ip, args), ip_addresses):
-                    if result:
-                        found_targets.append(result)
-                        if output_file:
-                            output_file.write(f"{result}\n")
-                            output_file.flush()
-                    instance_bar()
+                
+                    return result
+                
+                with concurrent.futures.ThreadPoolExecutor(max_workers=args.t) as executor:
+                    # Process all IPs with thread-safe updates
+                    batch_results = list(executor.map(process_and_update_subnet, ip_addresses))
 
-    if output_file:
-        output_file.close()
+                print("")  # Ensure we're on a new line
+                print_colour(f"[+] Scan complete - Found {found_count} targets")
+
+    finally:
+        # Ensure file is closed properly
+        if output_file:
+            output_file.close()
 
     for targ in found_targets[:args.n]:
         print(targ)
